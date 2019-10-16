@@ -29,6 +29,7 @@ type Options struct {
 	Scheme    string // http or https; deprecated, use: Servers.
 	Username  string
 	Password  string
+	TimeStamp string
 }
 
 // Item represents a bulk action.
@@ -95,7 +96,7 @@ func BulkIndex(docs []string, options Options) error {
 			continue
 		}
 
-		header := fmt.Sprintf(`{"index": {"_index": "%s", "_type": "%s"}}`, options.Index, options.DocType)
+		header := fmt.Sprintf(`{"index": {"_index": "%s"}}`, options.Index)
 
 		// If an "-id" is given, peek into the document to extract the ID and
 		// use it in the header.
@@ -141,8 +142,8 @@ func BulkIndex(docs []string, options Options) error {
 				}
 			}
 
-			header = fmt.Sprintf(`{"index": {"_index": "%s", "_type": "%s", "_id": %q}}`,
-				options.Index, options.DocType, idstr)
+			header = fmt.Sprintf(`{"index": {"_index": "%s", "_id": %q}}`,
+				options.Index, idstr)
 
 			// Remove the IDField if it is accidentally named '_id', since
 			// Field [_id] is a metadata field and cannot be added inside a
@@ -163,6 +164,21 @@ func BulkIndex(docs []string, options Options) error {
 				doc = string(b)
 			}
 		}
+
+		// Add Timestamp field if flag is passed
+		if options.TimeStamp != "" {
+			var docmap map[string]interface{}
+			dec := json.NewDecoder(strings.NewReader(doc))
+			dec.UseNumber()
+			if err := dec.Decode(&docmap); err != nil {
+				return fmt.Errorf("failed to json decode doc: %v", err)
+			}
+			timeStamp := time.Now()
+			docmap[options.TimeStamp] = string(timeStamp.Format(time.RFC3339))
+			b, _ := json.Marshal(docmap)
+			doc = string(b)
+		}
+
 		lines = append(lines, header, doc)
 	}
 
@@ -257,7 +273,7 @@ func PutMapping(options Options, body io.Reader) error {
 
 	rand.Seed(time.Now().Unix())
 	server := options.Servers[rand.Intn(len(options.Servers))]
-	link := fmt.Sprintf("%s/%s/_mapping/%s", server, options.Index, options.DocType)
+	link := fmt.Sprintf("%s/%s/_mapping", server, options.Index)
 
 	if options.Verbose {
 		log.Printf("applying mapping: %s", link)

@@ -39,6 +39,7 @@ var (
 	user            = flag.String("u", "", "http basic auth username:password, like curl -u")
 	zeroReplica     = flag.Bool("0", false, "set the number of replicas to 0 during indexing")
 	refreshInterval = flag.String("r", "1s", "Refresh interval after import")
+	timeStamp 		= flag.String("timestamp", "", "Add a timestamp field to each line, this should be the column name")
 )
 
 // indexSettingsRequest runs updates an index setting, given a body and
@@ -95,6 +96,7 @@ func main() {
 		log.Fatal("index name required")
 	}
 
+
 	if len(serverFlags) == 0 {
 		serverFlags = append(serverFlags, "http://localhost:9200")
 	}
@@ -136,6 +138,7 @@ func main() {
 		IDField:   *idfield,
 		Username:  username,
 		Password:  password,
+		TimeStamp: *timeStamp,
 	}
 
 	if *verbose {
